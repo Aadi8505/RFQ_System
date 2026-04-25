@@ -4,7 +4,7 @@ const cors = require("cors");
 const healthRoutes = require("./routes/healthRoutes");
 const rfqRoutes = require("./routes/rfqRoutes");
 const { testConnection } = require("./config/db");
-const bidRoutes = require('./routes/bidRoutes');
+const bidRoutes = require("./routes/bidRoutes");
 const app = express();
 app.use(cors());
 app.use(express.json());
@@ -16,14 +16,18 @@ app.get("/health", (req, res) => {
 // Middleware
 
 // Routes
-app.use('/api', bidRoutes);
+app.use("/api", bidRoutes);
 app.use("/api", healthRoutes);
 app.use("/api", rfqRoutes);
 
-// Error handling middleware (optional)
+// Error handling middleware
 app.use((err, req, res, next) => {
   console.error(err.stack);
-  res.status(500).json({ error: "Internal Server Error" });
+  res.status(500).json({
+    success: false,
+    message: "Internal Server Error",
+    error: err.message,
+  });
 });
 
 testConnection();

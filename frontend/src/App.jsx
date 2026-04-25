@@ -1,30 +1,22 @@
-import { useEffect } from 'react'
+import { Routes, Route } from 'react-router-dom'
+import Navbar from './components/Navbar'
+import AuctionListPage from './pages/AuctionListPage'
+import AuctionDetailPage from './pages/AuctionDetailPage'
+import CreateRFQPage from './pages/CreateRFQPage'
 import './App.css'
-import { getHealth } from './services/api'
 
 function App() {
-  useEffect(() => {
-    const fetchHealth = async () => {
-      try {
-        const data = await getHealth()
-        console.log('Health check response:', data)
-      } catch (error) {
-        console.error('Failed to check health:', error)
-      }
-    }
-
-    fetchHealth()
-  }, [])
-
   return (
-    <div className="app-container">
-      <header className="app-header">
-        <h1>RFQ Auction System</h1>
-      </header>
-      <main className="app-main">
-        <p>Welcome to the RFQ Auction System</p>
+    <>
+      <Navbar />
+      <main className="main-content">
+        <Routes>
+          <Route path="/" element={<AuctionListPage />} />
+          <Route path="/rfq/:id" element={<AuctionDetailPage />} />
+          <Route path="/create" element={<CreateRFQPage />} />
+        </Routes>
       </main>
-    </div>
+    </>
   )
 }
 
