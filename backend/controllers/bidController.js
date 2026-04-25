@@ -134,6 +134,18 @@ const placeBid = async (req, res) => {
     ]);
     const newBid = insertResult.rows[0];
 
+    // STEP 7.5: Log bid submission in audit trail
+    const bidAuditAction = `Bid placed: ₹${parsedBidAmount} by ${carrier_name || "Unknown"}${isNewL1 ? " (New L1)" : ""}`;
+    const bidAuditQuery = `
+      INSERT INTO rfq_audit (rfq_id, action, old_bid_close_time, new_bid_close_time, changed_by, changed_at)
+      VALUES ($1, $2, NULL, NULL, $3, CURRENT_TIMESTAMP)
+    `;
+    await pool.query(bidAuditQuery, [
+      rfq_id,
+      bidAuditAction,
+      carrier_name || "supplier",
+    ]);
+
     // STEP 8: Determine trigger window
     const triggerWindowMs = rfq.trigger_window * 60000; // convert minutes to ms
     const triggerStartTime = new Date(bidCloseTime.getTime() - triggerWindowMs);

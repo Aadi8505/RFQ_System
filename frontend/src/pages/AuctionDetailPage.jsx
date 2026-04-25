@@ -77,11 +77,11 @@ function AuctionDetailPage() {
     }
   }
 
-  const fmt = (d) => d ? new Date(d).toLocaleString('en-IN', { month:'short', day:'numeric', hour:'2-digit', minute:'2-digit', second:'2-digit', hour12:true }) : '—'
-  const fmtC = (a) => (a != null) ? new Intl.NumberFormat('en-IN', { style:'currency', currency:'INR', maximumFractionDigits:0 }).format(a) : '—'
+  const fmt = (d) => d ? new Date(d).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) : '—'
+  const fmtC = (a) => (a != null) ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(a) : '—'
 
-  if (loading) return <div className="container animate-fade"><div className="skeleton" style={{height:400}} /></div>
-  if (error || !data) return <div className="container animate-fade"><div className="error-page"><h2>Error</h2><p>{error||'Not found'}</p><Link to="/">← Back</Link></div></div>
+  if (loading) return <div className="container animate-fade"><div className="skeleton" style={{ height: 400 }} /></div>
+  if (error || !data) return <div className="container animate-fade"><div className="error-page"><h2>Error</h2><p>{error || 'Not found'}</p><Link to="/">← Back</Link></div></div>
 
   const { rfq, auction_config, rankings, activity_log } = data
   const isActive = rfq.status === 'Active'
@@ -91,13 +91,13 @@ function AuctionDetailPage() {
       <div className="breadcrumb">
         <Link to="/">Auctions</Link>
         <span className="bc-sep">›</span>
-        <span>RFQ-{String(rfq.id).padStart(4,'0')}</span>
+        <span>RFQ-{String(rfq.id).padStart(4, '0')}</span>
       </div>
 
       <div className="detail-header">
         <div>
           <div className="detail-id-row">
-            <span className="detail-rfq-id">RFQ-{String(rfq.id).padStart(4,'0')}</span>
+            <span className="detail-rfq-id">RFQ-{String(rfq.id).padStart(4, '0')}</span>
             <StatusBadge status={rfq.status} />
           </div>
           <h1 className="detail-name">{rfq.name}</h1>
@@ -129,9 +129,9 @@ function AuctionDetailPage() {
       <div className="detail-grid">
         <div className="detail-main">
           <div className="detail-tabs">
-            {['rankings','activity','config'].map(t => (
-              <button key={t} className={`detail-tab ${activeTab===t?'active':''}`} onClick={()=>setActiveTab(t)}>
-                {t === 'rankings' ? `Rankings (${rankings.length})` : t === 'activity' ? `Activity (${activity_log?.length||0})` : 'Config'}
+            {['rankings', 'activity', 'config'].map(t => (
+              <button key={t} className={`detail-tab ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>
+                {t === 'rankings' ? `Rankings (${rankings.length})` : t === 'activity' ? `Activity (${activity_log?.length || 0})` : 'Config'}
               </button>
             ))}
           </div>
@@ -141,16 +141,16 @@ function AuctionDetailPage() {
               {rankings.length === 0 ? <div className="empty-tab"><p>No bids yet</p></div> : (
                 <div className="rankings-list">
                   {rankings.map((r, i) => (
-                    <div key={r.bid_id} className={`ranking-card ${i===0?'l1-card':''}`}>
+                    <div key={r.bid_id} className={`ranking-card ${i === 0 ? 'l1-card' : ''}`}>
                       <div className="ranking-row" onClick={() => setExpandedBid(expandedBid === r.bid_id ? null : r.bid_id)}>
-                        <span className={`rank-badge ${i<3?`rank-l${i+1}`:''}`}>{r.rank}</span>
+                        <span className={`rank-badge ${i < 3 ? `rank-l${i + 1}` : ''}`}>{r.rank}</span>
                         <div className="ranking-main">
                           <span className="ranking-carrier">{r.carrier_name || 'Unknown Carrier'}</span>
                           <span className="ranking-time">{fmt(r.placed_at)}</span>
                         </div>
                         <span className="ranking-amount">{fmtC(r.bid_amount)}</span>
-                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`expand-icon ${expandedBid===r.bid_id?'expanded':''}`}>
-                          <polyline points="6 9 12 15 18 9"/>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`expand-icon ${expandedBid === r.bid_id ? 'expanded' : ''}`}>
+                          <polyline points="6 9 12 15 18 9" />
                         </svg>
                       </div>
                       {expandedBid === r.bid_id && (
@@ -186,7 +186,7 @@ function AuctionDetailPage() {
 
           {activeTab === 'activity' && (
             <div className="tab-content animate-fade">
-              {(!activity_log||activity_log.length===0) ? <div className="empty-tab"><p>No extensions yet</p></div> : (
+              {(!activity_log || activity_log.length === 0) ? <div className="empty-tab"><p>No extensions yet</p></div> : (
                 <div className="activity-list">
                   {activity_log.map((log, i) => (
                     <div key={i} className="activity-item">
@@ -211,11 +211,11 @@ function AuctionDetailPage() {
                 {[
                   ['Trigger Window', `${auction_config.trigger_window} min`],
                   ['Extension Duration', `${auction_config.extension_duration} min`],
-                  ['Trigger Type', auction_config.trigger_type?.replace(/_/g,' ')],
+                  ['Trigger Type', auction_config.trigger_type?.replace(/_/g, ' ')],
                   ['Bid Start', fmt(rfq.bid_start_time)],
                   ['Current Close', fmt(rfq.bid_close_time)],
                   ['Forced Close', fmt(rfq.forced_close_time)],
-                ].map(([l,v]) => (
+                ].map(([l, v]) => (
                   <div key={l} className="config-item"><span className="config-label">{l}</span><span className="config-value">{v}</span></div>
                 ))}
               </div>
@@ -237,7 +237,7 @@ function AuctionDetailPage() {
                 <div className="bid-field">
                   <label>Bid Amount (Total) *</label>
                   <div className="bid-input-group">
-                    <span className="bid-currency">₹</span>
+                    {/* <span className="bid-currency">₹</span> */}
                     <input type="number" name="bid_amount" value={bidForm.bid_amount} onChange={handleBidChange} placeholder="Total amount" min="1" step="any" required className="bid-input" id="bid-amount-input" />
                   </div>
                 </div>

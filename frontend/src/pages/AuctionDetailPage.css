@@ -66,6 +66,8 @@
 .activity-item { display:flex; gap:14px; padding:14px 0; border-bottom:1px solid var(--border-subtle); }
 .activity-item:last-child { border-bottom:none; }
 .activity-dot { width:8px; height:8px; border-radius:50%; background:var(--accent); margin-top:6px; flex-shrink:0; }
+.dot-bid { background:var(--green); }
+.dot-extension { background:var(--amber); }
 .activity-content { display:flex; flex-direction:column; gap:4px; }
 .activity-action { font-size:13px; font-weight:600; color:var(--text-primary); }
 .activity-times { font-size:12px; color:var(--text-muted); display:flex; align-items:center; gap:6px; }
