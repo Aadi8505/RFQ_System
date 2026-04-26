@@ -7,12 +7,16 @@ function CreateRFQPage() {
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  const [timeFormat, setTimeFormat] = useState('relative') // 'relative' or 'absolute'
 
   const [form, setForm] = useState({
     name: '',
     start_minutes_from_now: 0,
     close_minutes_from_now: 10,
     forced_close_minutes_from_now: 30,
+    bid_start_time: '',
+    bid_close_time: '',
+    forced_close_time: '',
     service_date: '',
     trigger_window: 5,
     extension_duration: 2,
@@ -23,7 +27,7 @@ function CreateRFQPage() {
     const { name, value } = e.target
     setForm(prev => ({
       ...prev,
-      [name]: ['name', 'service_date', 'trigger_type'].includes(name) ? value : Number(value),
+      [name]: ['name', 'service_date', 'trigger_type', 'bid_start_time', 'bid_close_time', 'forced_close_time'].includes(name) ? value : Number(value),
     }))
   }
 
@@ -40,20 +44,48 @@ function CreateRFQPage() {
       setError('Service Date is required')
       return
     }
-    if (form.close_minutes_from_now <= form.start_minutes_from_now) {
-      setError('Bid Close Time must be after Bid Start Time')
-      return
-    }
-    if (form.forced_close_minutes_from_now <= form.close_minutes_from_now) {
-      setError('Forced Close Time must be after Bid Close Time')
-      return
+    if (timeFormat === 'relative') {
+      if (form.close_minutes_from_now <= form.start_minutes_from_now) {
+        setError('Bid Close Time must be after Bid Start Time')
+        return
+      }
+      if (form.forced_close_minutes_from_now <= form.close_minutes_from_now) {
+        setError('Forced Close Time must be after Bid Close Time')
+        return
+      }
+    } else {
+      if (!form.bid_start_time || !form.bid_close_time || !form.forced_close_time) {
+        setError('Please provide all absolute times')
+        return
+      }
+      if (new Date(form.bid_close_time) <= new Date(form.bid_start_time)) {
+        setError('Bid Close Time must be after Bid Start Time')
+        return
+      }
+      if (new Date(form.forced_close_time) <= new Date(form.bid_close_time)) {
+        setError('Forced Close Time must be after Bid Close Time')
+        return
+      }
     }
 
     try {
       setLoading(true)
       const payload = {
-        ...form,
+        name: form.name,
         service_date: `${form.service_date}T12:00:00`,
+        trigger_window: form.trigger_window,
+        extension_duration: form.extension_duration,
+        trigger_type: form.trigger_type,
+      }
+      
+      if (timeFormat === 'relative') {
+        payload.start_minutes_from_now = form.start_minutes_from_now
+        payload.close_minutes_from_now = form.close_minutes_from_now
+        payload.forced_close_minutes_from_now = form.forced_close_minutes_from_now
+      } else {
+        payload.bid_start_time = new Date(form.bid_start_time).toISOString()
+        payload.bid_close_time = new Date(form.bid_close_time).toISOString()
+        payload.forced_close_time = new Date(form.forced_close_time).toISOString()
       }
       const res = await createRFQ(payload)
       if (res.success) {
@@ -137,51 +169,121 @@ function CreateRFQPage() {
               </svg>
               Auction Timing
             </h2>
-            <p className="section-desc">Times are relative to now. Enter minutes from the current time.</p>
+            <div className="time-format-toggle">
+              <label className={timeFormat === 'relative' ? 'active' : ''}>
+                <input 
+                  type="radio" 
+                  name="timeFormat" 
+                  value="relative" 
+                  checked={timeFormat === 'relative'} 
+                  onChange={() => setTimeFormat('relative')} 
+                />
+                Minutes from now
+              </label>
+              <label className={timeFormat === 'absolute' ? 'active' : ''}>
+                <input 
+                  type="radio" 
+                  name="timeFormat" 
+                  value="absolute" 
+                  checked={timeFormat === 'absolute'} 
+                  onChange={() => setTimeFormat('absolute')} 
+                />
+                Set absolute time
+              </label>
+            </div>
+
+            <p className="section-desc">
+              {timeFormat === 'relative' 
+                ? 'Times are relative to now. Enter minutes from the current time.' 
+                : 'Select the exact date and time for each event.'}
+            </p>
 
             <div className="form-row">
-              <div className="form-group">
-                <label htmlFor="start_minutes_from_now">Bid Start (min from now)</label>
-                <input
-                  type="number"
-                  id="start_minutes_from_now"
-                  name="start_minutes_from_now"
-                  value={form.start_minutes_from_now}
-                  onChange={handleChange}
-                  min="0"
-                  step="1"
-                  required
-                />
-                <span className="form-hint">0 = starts immediately</span>
-              </div>
-              <div className="form-group">
-                <label htmlFor="close_minutes_from_now">Bid Close (min from now)</label>
-                <input
-                  type="number"
-                  id="close_minutes_from_now"
-                  name="close_minutes_from_now"
-                  value={form.close_minutes_from_now}
-                  onChange={handleChange}
-                  min="1"
-                  step="1"
-                  required
-                />
-                <span className="form-hint">When auction normally ends</span>
-              </div>
-              <div className="form-group">
-                <label htmlFor="forced_close_minutes_from_now">Forced Close (min from now)</label>
-                <input
-                  type="number"
-                  id="forced_close_minutes_from_now"
-                  name="forced_close_minutes_from_now"
-                  value={form.forced_close_minutes_from_now}
-                  onChange={handleChange}
-                  min="2"
-                  step="1"
-                  required
-                />
-                <span className="form-hint">Absolute max — no extensions past this</span>
-              </div>
+              {timeFormat === 'relative' ? (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="start_minutes_from_now">Bid Start (min from now)</label>
+                    <input
+                      type="number"
+                      id="start_minutes_from_now"
+                      name="start_minutes_from_now"
+                      value={form.start_minutes_from_now}
+                      onChange={handleChange}
+                      min="0"
+                      step="1"
+                      required
+                    />
+                    <span className="form-hint">0 = starts immediately</span>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="close_minutes_from_now">Bid Close (min from now)</label>
+                    <input
+                      type="number"
+                      id="close_minutes_from_now"
+                      name="close_minutes_from_now"
+                      value={form.close_minutes_from_now}
+                      onChange={handleChange}
+                      min="1"
+                      step="1"
+                      required
+                    />
+                    <span className="form-hint">When auction normally ends</span>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="forced_close_minutes_from_now">Forced Close (min from now)</label>
+                    <input
+                      type="number"
+                      id="forced_close_minutes_from_now"
+                      name="forced_close_minutes_from_now"
+                      value={form.forced_close_minutes_from_now}
+                      onChange={handleChange}
+                      min="2"
+                      step="1"
+                      required
+                    />
+                    <span className="form-hint">Absolute max — no extensions past this</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="form-group">
+                    <label htmlFor="bid_start_time">Bid Start Time</label>
+                    <input
+                      type="datetime-local"
+                      id="bid_start_time"
+                      name="bid_start_time"
+                      value={form.bid_start_time}
+                      onChange={handleChange}
+                      required
+                    />
+                    <span className="form-hint">When the auction opens</span>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="bid_close_time">Bid Close Time</label>
+                    <input
+                      type="datetime-local"
+                      id="bid_close_time"
+                      name="bid_close_time"
+                      value={form.bid_close_time}
+                      onChange={handleChange}
+                      required
+                    />
+                    <span className="form-hint">When auction normally ends</span>
+                  </div>
+                  <div className="form-group">
+                    <label htmlFor="forced_close_time">Forced Close Time</label>
+                    <input
+                      type="datetime-local"
+                      id="forced_close_time"
+                      name="forced_close_time"
+                      value={form.forced_close_time}
+                      onChange={handleChange}
+                      required
+                    />
+                    <span className="form-hint">Absolute max — no extensions past this</span>
+                  </div>
+                </>
+              )}
             </div>
           </div>
 
@@ -248,18 +350,37 @@ function CreateRFQPage() {
           <div className="preview-card">
             <h3 className="preview-title">Configuration Preview</h3>
             <div className="preview-grid">
-              <div className="preview-item">
-                <span className="preview-label">Auction starts</span>
-                <span className="preview-value">{form.start_minutes_from_now === 0 ? 'Immediately' : `In ${form.start_minutes_from_now} min`}</span>
-              </div>
-              <div className="preview-item">
-                <span className="preview-label">Normal close</span>
-                <span className="preview-value">In {form.close_minutes_from_now} min</span>
-              </div>
-              <div className="preview-item">
-                <span className="preview-label">Hard deadline</span>
-                <span className="preview-value">In {form.forced_close_minutes_from_now} min</span>
-              </div>
+              {timeFormat === 'relative' ? (
+                <>
+                  <div className="preview-item">
+                    <span className="preview-label">Auction starts</span>
+                    <span className="preview-value">{form.start_minutes_from_now === 0 ? 'Immediately' : `In ${form.start_minutes_from_now} min`}</span>
+                  </div>
+                  <div className="preview-item">
+                    <span className="preview-label">Normal close</span>
+                    <span className="preview-value">In {form.close_minutes_from_now} min</span>
+                  </div>
+                  <div className="preview-item">
+                    <span className="preview-label">Hard deadline</span>
+                    <span className="preview-value">In {form.forced_close_minutes_from_now} min</span>
+                  </div>
+                </>
+              ) : (
+                <>
+                  <div className="preview-item">
+                    <span className="preview-label">Auction starts</span>
+                    <span className="preview-value">{form.bid_start_time ? new Date(form.bid_start_time).toLocaleString() : 'Not set'}</span>
+                  </div>
+                  <div className="preview-item">
+                    <span className="preview-label">Normal close</span>
+                    <span className="preview-value">{form.bid_close_time ? new Date(form.bid_close_time).toLocaleString() : 'Not set'}</span>
+                  </div>
+                  <div className="preview-item">
+                    <span className="preview-label">Hard deadline</span>
+                    <span className="preview-value">{form.forced_close_time ? new Date(form.forced_close_time).toLocaleString() : 'Not set'}</span>
+                  </div>
+                </>
+              )}
               <div className="preview-item">
                 <span className="preview-label">Monitoring window</span>
                 <span className="preview-value">Last {form.trigger_window} min before close</span>
