@@ -118,6 +118,37 @@
 .error-page h2 { color:var(--text-primary); }
 .error-page p { color:var(--text-muted); margin:8px 0 20px; }
 
+/* Admin monitoring notice */
+.bid-admin-notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  padding: 20px;
+  background: var(--purple-bg);
+  border: 1px solid rgba(168, 85, 247, 0.2);
+  border-radius: var(--radius-md);
+  color: var(--purple);
+}
+
+.bid-admin-notice svg {
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.admin-notice-title {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--purple);
+  margin: 0 0 4px 0;
+}
+
+.admin-notice-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin: 0;
+  line-height: 1.5;
+}
+
 @media (max-width: 768px) {
   .detail-grid { grid-template-columns:1fr; }
   .detail-sidebar { position:static; }

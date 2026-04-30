@@ -1,11 +1,13 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { getRFQById, placeBid } from '../services/api'
+import { useAuth } from '../context/AuthContext'
 import StatusBadge from '../components/StatusBadge'
 import './AuctionDetailPage.css'
 
 function AuctionDetailPage() {
   const { id } = useParams()
+  const { isAdmin } = useAuth()
   const [data, setData] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
@@ -225,8 +227,19 @@ function AuctionDetailPage() {
 
         <div className="detail-sidebar">
           <div className="bid-card">
-            <h3 className="bid-card-title">Submit Quote</h3>
-            {!isActive ? (
+            <h3 className="bid-card-title">{isAdmin ? 'Monitor Quotes' : 'Submit Quote'}</h3>
+            {isAdmin ? (
+              <div className="bid-admin-notice">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                  <circle cx="12" cy="12" r="3"/>
+                </svg>
+                <div>
+                  <p className="admin-notice-title">Admin View — Monitoring Only</p>
+                  <p className="admin-notice-desc">You can monitor all bids and rankings in real-time. Only users can submit quotes.</p>
+                </div>
+              </div>
+            ) : !isActive ? (
               <div className="bid-closed">Auction is {rfq.status?.toLowerCase()}</div>
             ) : (
               <form onSubmit={handlePlaceBid} className="bid-form">
