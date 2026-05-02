@@ -15,10 +15,7 @@ function LoginPage() {
     setError('')
     setLoading(true)
 
-    // Small delay for UX feel
-    await new Promise(r => setTimeout(r, 600))
-
-    const result = login(email, password)
+    const result = await login(email, password)
     if (!result.success) {
       setError(result.message)
       setLoading(false)
@@ -129,22 +126,6 @@ function LoginPage() {
             </button>
           </form>
 
-          {/* Credentials Hint */}
-          <div className="login-hints">
-            <p className="login-hints-title">Demo Credentials</p>
-            <div className="login-hint-cards">
-              <button type="button" className="login-hint-card" onClick={() => { setEmail('admin@gmail.com'); setPassword('admin123'); setError('') }}>
-                <span className="hint-role admin-role">Admin</span>
-                <span className="hint-email">admin@gmail.com</span>
-                <span className="hint-desc">Create & monitor auctions</span>
-              </button>
-              <button type="button" className="login-hint-card" onClick={() => { setEmail('user@gmail.com'); setPassword('user123'); setError('') }}>
-                <span className="hint-role user-role">User</span>
-                <span className="hint-email">user@gmail.com</span>
-                <span className="hint-desc">Monitor & place bids</span>
-              </button>
-            </div>
-          </div>
         </div>
       </div>
     </div>

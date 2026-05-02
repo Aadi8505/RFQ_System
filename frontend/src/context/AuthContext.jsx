@@ -1,39 +1,52 @@
-import { createContext, useContext, useState } from 'react'
+import { createContext, useContext, useState, useCallback } from 'react'
+import axios from 'axios'
 
-// Hardcoded credentials (dummy auth — no backend needed)
-const USERS = [
-  { email: 'admin@gmail.com', password: 'admin123', role: 'admin', name: 'Admin' },
-  { email: 'user@gmail.com',  password: 'user123',  role: 'user',  name: 'User'  },
-]
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000'
 
 const AuthContext = createContext(null)
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(() => {
     try {
-      const saved = sessionStorage.getItem('rfq_user')
+      const saved = localStorage.getItem('rfq_user')
       return saved ? JSON.parse(saved) : null
     } catch {
       return null
     }
   })
 
-  const login = (email, password) => {
-    const found = USERS.find(u => u.email === email && u.password === password)
-    if (!found) return { success: false, message: 'Invalid email or password.' }
-    const userData = { email: found.email, role: found.role, name: found.name }
-    sessionStorage.setItem('rfq_user', JSON.stringify(userData))
-    setUser(userData)
-    return { success: true }
-  }
+  const [token, setToken] = useState(() => localStorage.getItem('rfq_token') || null)
 
-  const logout = () => {
-    sessionStorage.removeItem('rfq_user')
+  // ── Login ──────────────────────────────────────────────────────────────────
+  const login = useCallback(async (email, password) => {
+    try {
+      const { data } = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password })
+      if (!data.success) return { success: false, message: data.message || 'Login failed.' }
+
+      localStorage.setItem('rfq_token', data.token)
+      localStorage.setItem('rfq_user', JSON.stringify(data.user))
+      setToken(data.token)
+      setUser(data.user)
+      return { success: true }
+    } catch (err) {
+      const message = err.response?.data?.message || 'Invalid email or password.'
+      return { success: false, message }
+    }
+  }, [])
+
+  // ── Logout ─────────────────────────────────────────────────────────────────
+  const logout = useCallback(() => {
+    localStorage.removeItem('rfq_token')
+    localStorage.removeItem('rfq_user')
+    setToken(null)
     setUser(null)
-  }
+  }, [])
+
+  const isAdmin = user?.role === 'admin'
+  const isUser  = user?.role === 'user'
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin: user?.role === 'admin', isUser: user?.role === 'user' }}>
+    <AuthContext.Provider value={{ user, token, login, logout, isAdmin, isUser }}>
       {children}
     </AuthContext.Provider>
   )

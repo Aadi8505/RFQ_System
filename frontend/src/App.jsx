@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage'
 import AuctionListPage from './pages/AuctionListPage'
 import AuctionDetailPage from './pages/AuctionDetailPage'
 import CreateRFQPage from './pages/CreateRFQPage'
+import UserManagementPage from './pages/UserManagementPage'
 import './App.css'
 
 function ProtectedRoute({ children }) {
@@ -32,6 +33,7 @@ function App() {
           <Route path="/" element={<ProtectedRoute><AuctionListPage /></ProtectedRoute>} />
           <Route path="/rfq/:id" element={<ProtectedRoute><AuctionDetailPage /></ProtectedRoute>} />
           <Route path="/create" element={<AdminRoute><CreateRFQPage /></AdminRoute>} />
+          <Route path="/users" element={<AdminRoute><UserManagementPage /></AdminRoute>} />
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
