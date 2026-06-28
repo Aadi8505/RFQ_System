@@ -1,60 +1,113 @@
 # RFQ Auction System
 
-A modern web application for managing Request for Quote (RFQ) auctions using a British auction model. Buyers can solicit quotes from multiple sellers and conduct real-time auctions to find the best pricing.
+A full-stack British Auction RFQ (Request for Quotation) system where buyers create auctions, suppliers compete by submitting price quotes, and the system automatically extends the auction deadline when bidding activity occurs near closing time — ensuring fair competition and preventing last-second bid sniping.
+
+**Now with JWT Authentication & Role-Based Access Control.**
 
 ## Tech Stack
 
-- **Frontend:** React, Vite, Axios
-- **Backend:** Node.js, Express
-- **Architecture:** Modular, RESTful API
+- **Frontend:** React 19, Vite 8, React Router 7, Axios
+- **Backend:** Node.js, Express 4
+- **Database:** PostgreSQL (Neon Cloud, serverless)
+- **Auth:** JWT (jsonwebtoken) + bcryptjs
+- **Architecture:** 3-Tier, Modular RESTful API
+
+## User Roles
+
+| Role | Capabilities |
+|------|-------------|
+| **Admin** | Create RFQ auctions, manage users (create/edit/delete), view all auctions |
+| **User** | View auctions, view rankings, place bids |
+
+**Default admin credentials (seeded on first run):**
+```
+Email:    admin@rfq.com
+Password: admin123
+```
+> ⚠️ Change these immediately in any non-local environment.
 
 ## Project Structure
 
 ```
 RFQ_System/
-├── client/                 # React frontend
+├── backend/                    # Node.js + Express API Server
+│   ├── index.js               # Express entry point — routes + middleware
+│   ├── config/
+│   │   └── db.js              # PostgreSQL connection pool (Neon + SSL)
+│   ├── controllers/
+│   │   ├── authController.js  # Login, user CRUD, table auto-seeding
+│   │   ├── rfqController.js   # Create/List/Detail RFQ logic
+│   │   └── bidController.js   # 12-step bid placement + auction logic
+│   ├── middleware/
+│   │   └── authMiddleware.js  # JWT verify (authenticate) + role guard (requireAdmin)
+│   ├── routes/
+│   │   ├── authRoutes.js      # /auth/login, /auth/me, /users CRUD
+│   │   ├── rfqRoutes.js       # POST /api/rfq, GET /api/rfqs, GET /api/rfq/:id
+│   │   ├── bidRoutes.js       # POST /api/bid
+│   │   └── healthRoutes.js    # GET /api/health
+│   ├── .env                   # Environment variables (see below)
+│   ├── .env.example           # Template for env vars
+│   └── package.json
+│
+├── frontend/                   # React + Vite SPA
+│   ├── index.html
+│   ├── vite.config.js
 │   └── src/
-│       ├── pages/         # Page components
-│       ├── components/    # Reusable components
-│       ├── services/      # API service layer
-│       └── App.jsx        # Main app component
-├── index.js               # Express server entry point
-├── routes/                # API route definitions
-├── controllers/           # Request handlers
-├── services/              # Business logic
-├── models/                # Data models
-├── config/                # Configuration
-└── package.json
+│       ├── main.jsx           # React entry — BrowserRouter + AuthProvider
+│       ├── App.jsx            # Root component — routes + ProtectedRoute
+│       ├── index.css          # Global design system (dark theme)
+│       ├── context/
+│       │   └── AuthContext.jsx # Global auth state: token, user, login(), logout()
+│       ├── components/
+│       │   ├── Navbar.jsx     # Navigation + logout + role badge
+│       │   └── StatusBadge.jsx # Colored auction status indicator
+│       ├── pages/
+│       │   ├── LoginPage.jsx        # Email/password login form
+│       │   ├── AuctionListPage.jsx  # Home — all auctions with filters
+│       │   ├── AuctionDetailPage.jsx # Rankings + bid form + activity log
+│       │   ├── CreateRFQPage.jsx    # Create auction form (admin only)
+│       │   └── UserManagementPage.jsx # Manage users (admin only)
+│       └── services/
+│           └── api.js         # Axios HTTP client (injects auth token)
+│
+├── HLD.md                     # High-Level Design (original, pre-auth)
+├── HLD_v2.md                  # High-Level Design v2 (with JWT auth)
+├── database-schema.sql        # PostgreSQL DDL — original 3 tables
+├── database-schema-v2.sql     # PostgreSQL DDL v2 — all 4 tables (+ users)
+├── docs/                      # Additional documentation
+└── interview_prep/            # Interview preparation guides
 ```
 
 ## Quick Start
 
+### Prerequisites
+
+- Node.js 18+
+- A [Neon](https://neon.tech) PostgreSQL database (free tier works)
+
 ### Backend Setup
 
 ```bash
+cd backend
+
 # Install dependencies
 npm install
 
-# Run development server (with auto-reload)
+# Copy env template and fill in values
+cp .env.example .env
+
+# Run development server (auto-reload via nodemon)
 npm run dev
-
-# Or run production server
-npm start
 ```
 
-The backend runs on `http://localhost:3000` by default.
+The backend runs on `http://localhost:5000`.
 
-**API Health Check:**
-
-```
-GET /api/health
-Response: { "message": "Server running" }
-```
+**First run:** The `users` table and a default admin are seeded automatically.
 
 ### Frontend Setup
 
 ```bash
-cd client
+cd frontend
 
 # Install dependencies
 npm install
@@ -63,23 +116,69 @@ npm install
 npm run dev
 ```
 
-The frontend runs on `http://localhost:5173` by default and connects to the backend on `http://localhost:5000`.
+The frontend runs on `http://localhost:5173` and connects to the backend on `http://localhost:5000`.
 
 ## Environment Variables
 
-Create a `.env` file in the root directory:
+Create `backend/.env` with the following:
 
+```env
+# Server
+PORT=5000
+
+# Database (Neon PostgreSQL)
+DATABASE_URL=postgresql://user:password@host/dbname?sslmode=require
+
+# JWT Authentication
+JWT_SECRET=your_strong_random_secret_here
+JWT_EXPIRES_IN=8h
 ```
-PORT=3000
-DB_HOST=localhost
-DB_PORT=5432
-DB_NAME=rfq_system
-DB_USER=user
-DB_PASSWORD=password
-```
+
+> ⚠️ `JWT_SECRET` must be a long, random string in production. Never commit `.env` to version control.
+
+## API Overview
+
+### Public Endpoints (no auth required)
+| Method | Route | Purpose |
+|--------|-------|---------|
+| POST | `/api/auth/login` | Login — returns JWT token |
+| GET | `/api/health` | Server health check |
+
+### Authenticated Endpoints (Bearer token required)
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/auth/me` | Get current user profile |
+| GET | `/api/rfqs` | List all auctions |
+| GET | `/api/rfq/:id` | Get auction detail + rankings |
+| POST | `/api/rfq` | Create new auction |
+| POST | `/api/bid` | Place a bid |
+
+### Admin-Only Endpoints (Bearer token + admin role)
+| Method | Route | Purpose |
+|--------|-------|---------|
+| GET | `/api/users` | List all users |
+| POST | `/api/users` | Create a new user |
+| PUT | `/api/users/:id` | Update a user |
+| DELETE | `/api/users/:id` | Delete a user |
 
 ## Development
 
-Both frontend and backend support hot-reload during development. Start each in separate terminal sessions for the best experience.
+Both frontend and backend support hot-reload during development. Start each in separate terminal sessions.
 
-# RFQ_System
+```bash
+# Terminal 1 — Backend
+cd backend && npm run dev
+
+# Terminal 2 — Frontend
+cd frontend && npm run dev
+```
+
+## Documentation
+
+| File | Contents |
+|------|----------|
+| `HLD_v2.md` | Full architecture, auth flow, RBAC, API contract (latest) |
+| `HLD.md` | Original architecture (pre-auth, for reference) |
+| `database-schema-v2.sql` | All 4 tables including users (latest) |
+| `database-schema.sql` | Original 3 tables (for reference) |
+| `interview_prep/` | Modular interview preparation guides |
