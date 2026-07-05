@@ -126,6 +126,21 @@ function LoginPage() {
             </button>
           </form>
 
+          <div className="login-hints">
+            <h2 className="login-hints-title">Demo Credentials</h2>
+            <div 
+              className="login-hint-card"
+              onClick={() => {
+                setEmail('ekart@rfq.com');
+                setPassword('user123');
+              }}
+              style={{ width: '100%' }}
+            >
+              <span className="hint-role user-role">Ekart User</span>
+              <span className="hint-email">ekart@rfq.com</span>
+              <span className="hint-desc">Password: user123 (Click to autofill)</span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
