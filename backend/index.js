@@ -14,15 +14,15 @@ const app = express();
 
 // Read allowed origins from env (comma-separated)
 const allowedOrigins = process.env.ALLOWED_ORIGINS
-  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
+  ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim().replace(/\r/g, ""))
   : [];
 
 app.use(
   cors({
     origin: function (origin, callback) {
-      // Allow requests with no origin (mobile apps, curl, etc.)
       if (!origin) return callback(null, true);
-      // Allow if origin is in the whitelist
+      console.log("[CORS Debug] Request Origin:", origin);
+      console.log("[CORS Debug] Allowed Whitelist:", allowedOrigins);
       if (allowedOrigins.includes(origin)) {
         return callback(null, true);
       }
@@ -78,6 +78,7 @@ setInterval(async () => {
 // Start server
 server.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
+  console.log("LazyList Backend Server Live on AWS EC2!");
 });
 
 module.exports = app;
