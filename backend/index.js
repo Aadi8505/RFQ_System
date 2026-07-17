@@ -12,10 +12,14 @@ const messageRoutes = require("./routes/messageRoutes");
 
 const app = express();
 
-// Read allowed origins from env (comma-separated)
+// Read allowed origins from env (comma-separated), with fallback production domains
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
-  : [];
+  : [
+      "http://localhost:5173",
+      "https://auction.aadi85.in",
+      "https://rfq-system-frontend.onrender.com"
+    ];
 
 app.use(
   cors({
