@@ -1,14 +1,18 @@
 const express = require("express");
 const router = express.Router();
-const { createRFQ, getRFQs, getRFQById } = require("../controllers/rfqController");
+const { createRFQ, getRFQs, getRFQById, deleteRFQ } = require("../controllers/rfqController");
+const { authenticate, requireUser, requireAdmin } = require("../middleware/authMiddleware");
 
-// Create a new RFQ
-router.post("/rfq", createRFQ);
+// Create a new auction (USER ONLY — not admin)
+router.post("/rfq", authenticate, requireUser, createRFQ);
 
-// Get all RFQs (Auction Listing Page)
-router.get("/rfqs", getRFQs);
+// Get all auctions (any authenticated user, including admin)
+router.get("/rfqs", authenticate, getRFQs);
 
-// Get single RFQ details with bids, rankings, and audit log (Auction Details Page)
-router.get("/rfq/:id", getRFQById);
+// Get single auction details (any authenticated user)
+router.get("/rfq/:id", authenticate, getRFQById);
+
+// Delete an auction (ADMIN ONLY)
+router.delete("/rfq/:id", authenticate, requireAdmin, deleteRFQ);
 
 module.exports = router;

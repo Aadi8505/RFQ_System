@@ -1,20 +1,25 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { getRFQs } from '../services/api'
+import { getRFQs, getCategories } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import StatusBadge from '../components/StatusBadge'
+import CategoryIcon from '../components/CategoryIcon'
 import './AuctionListPage.css'
 
 function AuctionListPage() {
-  const { isAdmin } = useAuth()
+  const { user, isUser } = useAuth()
   const [rfqs, setRfqs] = useState([])
+  const [categories, setCategories] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  
+  // Filtering and searching states
   const [filter, setFilter] = useState('All')
+  const [selectedCategory, setSelectedCategory] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
 
   const fetchData = async () => {
     try {
-      setLoading(true)
       const res = await getRFQs()
       setRfqs(res.data || [])
       setError(null)
@@ -25,23 +30,58 @@ function AuctionListPage() {
     }
   }
 
+  const fetchCategoryData = async () => {
+    try {
+      const res = await getCategories()
+      if (res.success) {
+        setCategories(res.data || [])
+      }
+    } catch (err) {
+      console.error('Failed to load categories', err)
+    }
+  }
+
   useEffect(() => {
+    fetchCategoryData()
     fetchData()
     // Auto-refresh every 10 seconds
     const interval = setInterval(fetchData, 10000)
     return () => clearInterval(interval)
   }, [])
 
-  const filteredRfqs = filter === 'All'
-    ? rfqs
-    : rfqs.filter(r => r.status === filter)
+  // Combined client-side filtering
+  const filteredRfqs = rfqs.filter((rfq) => {
+    // 1. Status Filter
+    if (filter !== 'All' && rfq.status !== filter) return false
 
-  const statusCounts = {
-    All: rfqs.length,
-    Active: rfqs.filter(r => r.status === 'Active').length,
-    Closed: rfqs.filter(r => r.status === 'Closed').length,
-    'Force Closed': rfqs.filter(r => r.status === 'Force Closed').length,
-    Upcoming: rfqs.filter(r => r.status === 'Upcoming').length,
+    // 2. Category Filter
+    if (selectedCategory && rfq.category_id !== parseInt(selectedCategory)) return false
+
+    // 3. Search Query (matches name, description or category name)
+    if (searchQuery) {
+      const query = searchQuery.toLowerCase()
+      const matchesName = rfq.name.toLowerCase().includes(query)
+      const matchesDesc = rfq.description?.toLowerCase().includes(query)
+      const matchesCategory = rfq.category_name?.toLowerCase().includes(query)
+      if (!matchesName && !matchesDesc && !matchesCategory) return false
+    }
+
+    return true
+  })
+
+  // Dynamic counts for status filter tabs
+  const getStatusCount = (statusVal) => {
+    return rfqs.filter((rfq) => {
+      if (selectedCategory && rfq.category_id !== parseInt(selectedCategory)) return false
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase()
+        const matchesName = rfq.name.toLowerCase().includes(query)
+        const matchesDesc = rfq.description?.toLowerCase().includes(query)
+        const matchesCategory = rfq.category_name?.toLowerCase().includes(query)
+        if (!matchesName && !matchesDesc && !matchesCategory) return false
+      }
+      return statusVal === 'All' ? true : rfq.status === statusVal
+    }).length
   }
 
   const formatTime = (dateStr) => {
@@ -68,10 +108,10 @@ function AuctionListPage() {
     return (
       <div className="container animate-fade">
         <div className="page-header">
-          <h1>British Auctions</h1>
+          <h1>Service Requests</h1>
         </div>
         <div className="skeleton-grid">
-          {[1,2,3,4].map(i => (
+          {[1, 2, 3, 4].map(i => (
             <div key={i} className="skeleton-card skeleton" />
           ))}
         </div>
@@ -83,16 +123,17 @@ function AuctionListPage() {
     <div className="container animate-fade">
       <div className="page-header">
         <div>
-          <h1>British Auctions</h1>
-          <p className="page-subtitle">{rfqs.length} total auction{rfqs.length !== 1 ? 's' : ''}</p>
+          <h1>Service Requests</h1>
+          <p className="page-subtitle">{filteredRfqs.length} total request{filteredRfqs.length !== 1 ? 's' : ''}</p>
         </div>
-        {isAdmin && (
+        {/* Only users can post services — admin cannot */}
+        {isUser && (
           <Link to="/create" className="btn-primary" id="create-rfq-btn">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
-            New Auction
+            Post Service
           </Link>
         )}
       </div>
@@ -109,9 +150,40 @@ function AuctionListPage() {
         </div>
       )}
 
+      {/* Filter and Search Bar */}
+      <div className="controls-row">
+        <div className="search-wrap">
+          <svg className="search-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+          <input
+            type="text"
+            className="search-control"
+            placeholder="Search services..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+        </div>
+
+        <div className="select-wrap">
+          <select
+            className="category-control"
+            value={selectedCategory}
+            onChange={(e) => setSelectedCategory(e.target.value)}
+          >
+            <option value="">All Categories</option>
+            {categories.map((cat) => (
+              <option key={cat.id} value={cat.id}>
+                {cat.name}
+              </option>
+            ))}
+          </select>
+        </div>
+      </div>
+
       {/* Filter tabs */}
       <div className="filter-tabs">
-        {Object.entries(statusCounts).map(([status, count]) => (
+        {['All', 'Active', 'Upcoming', 'Closed', 'Force Closed'].map((status) => (
           <button
             key={status}
             className={`filter-tab ${filter === status ? 'active' : ''}`}
@@ -119,7 +191,7 @@ function AuctionListPage() {
             id={`filter-${status.toLowerCase().replace(' ', '-')}`}
           >
             {status}
-            <span className="filter-count">{count}</span>
+            <span className="filter-count">{getStatusCount(status)}</span>
           </button>
         ))}
       </div>
@@ -131,10 +203,10 @@ function AuctionListPage() {
             <path d="M2 17l10 5 10-5"/>
             <path d="M2 12l10 5 10-5"/>
           </svg>
-          <h3>No auctions found</h3>
-          <p>{filter !== 'All' ? `No ${filter.toLowerCase()} auctions.` : 'Create your first RFQ to get started.'}</p>
-          {filter === 'All' && isAdmin && (
-            <Link to="/create" className="btn-primary">Create RFQ</Link>
+          <h3>No service requests found</h3>
+          <p>{filter !== 'All' || selectedCategory || searchQuery ? 'No service requests match your criteria.' : 'Post your first service request to get started.'}</p>
+          {filter === 'All' && !selectedCategory && !searchQuery && isUser && (
+            <Link to="/create" className="btn-primary">Post Service</Link>
           )}
         </div>
       ) : (
@@ -148,10 +220,33 @@ function AuctionListPage() {
               style={{ animationDelay: `${index * 0.05}s` }}
             >
               <div className="card-top">
-                <span className="rfq-id">RFQ-{String(rfq.id).padStart(4, '0')}</span>
+                <div className="badge-row">
+                  <span className="rfq-id">RFQ-{String(rfq.id).padStart(4, '0')}</span>
+                  {rfq.category_name && (
+                    <span className="category-badge">
+                      <CategoryIcon icon={rfq.category_icon} size={12} className="badge-icon" />
+                      {rfq.category_name}
+                    </span>
+                  )}
+                </div>
                 <StatusBadge status={rfq.status} />
               </div>
               <h3 className="rfq-name">{rfq.name}</h3>
+
+              {rfq.description && (
+                <p className="rfq-desc-snippet">
+                  {rfq.description.length > 90
+                    ? `${rfq.description.substring(0, 90)}...`
+                    : rfq.description}
+                </p>
+              )}
+
+              <div className="card-meta">
+                <span className="meta-posted-by">
+                  Posted by: <strong>{rfq.posted_by_name || 'System'}</strong>
+                  {rfq.created_by === user?.id && <span className="own-tag">You</span>}
+                </span>
+              </div>
 
               <div className="card-stats">
                 <div className="stat">
@@ -168,10 +263,6 @@ function AuctionListPage() {
                 <div className="time-row">
                   <span className="time-label">Closes</span>
                   <span className="time-value">{formatTime(rfq.bid_close_time)}</span>
-                </div>
-                <div className="time-row">
-                  <span className="time-label">Force Close</span>
-                  <span className="time-value">{formatTime(rfq.forced_close_time)}</span>
                 </div>
               </div>
 

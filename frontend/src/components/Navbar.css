@@ -137,6 +137,14 @@
   box-shadow: var(--shadow-glow);
 }
 
+.navbar-avatar {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
 @media (max-width: 600px) {
   .navbar-title {
     display: none;

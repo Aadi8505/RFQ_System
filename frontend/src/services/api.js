@@ -36,8 +36,8 @@ export const getHealth = async () => {
 };
 
 // ── RFQ endpoints ─────────────────────────────────────────────────────────────
-export const getRFQs = async () => {
-  const response = await api.get("/api/rfqs");
+export const getRFQs = async (params = {}) => {
+  const response = await api.get("/api/rfqs", { params });
   return response.data;
 };
 
@@ -48,6 +48,11 @@ export const getRFQById = async (id) => {
 
 export const createRFQ = async (data) => {
   const response = await api.post("/api/rfq", data);
+  return response.data;
+};
+
+export const deleteRFQ = async (id) => {
+  const response = await api.delete(`/api/rfq/${id}`);
   return response.data;
 };
 
@@ -75,6 +80,51 @@ export const updateUser = async (id, data) => {
 
 export const deleteUser = async (id) => {
   const response = await api.delete(`/api/users/${id}`);
+  return response.data;
+};
+
+// ── Registration ──────────────────────────────────────────────────────────────
+export const registerUser = async (data) => {
+  const response = await api.post("/api/auth/register", data);
+  return response.data;
+};
+
+// ── Google Login ──────────────────────────────────────────────────────────────
+export const googleLoginApi = async (credential) => {
+  const response = await api.post("/api/auth/google", { credential });
+  return response.data;
+};
+
+// ── Categories ────────────────────────────────────────────────────────────────
+export const getCategories = async () => {
+  const response = await api.get("/api/categories");
+  return response.data;
+};
+
+// ── Admin Stats ───────────────────────────────────────────────────────────────
+export const getAdminStats = async () => {
+  const response = await api.get("/api/admin/stats");
+  return response.data;
+};
+
+// ── Messages (Post-Auction Chat) ──────────────────────────────────────────────
+export const getMessages = async (rfqId) => {
+  const response = await api.get(`/api/messages/${rfqId}`);
+  return response.data;
+};
+
+export const sendMessage = async (rfqId, content) => {
+  const response = await api.post(`/api/messages/${rfqId}`, { content });
+  return response.data;
+};
+
+export const closeChat = async (rfqId) => {
+  const response = await api.post(`/api/messages/${rfqId}/close`);
+  return response.data;
+};
+
+export const getUnreadCount = async () => {
+  const response = await api.get("/api/messages/unread/count");
   return response.data;
 };
 

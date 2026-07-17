@@ -31,4 +31,15 @@ const requireAdmin = (req, res, next) => {
   next();
 };
 
-module.exports = { authenticate, requireAdmin };
+/**
+ * Middleware: restrict to user role only (not admin)
+ * Used for routes where only regular users should act (posting auctions, bidding)
+ */
+const requireUser = (req, res, next) => {
+  if (!req.user || req.user.role !== "user") {
+    return res.status(403).json({ success: false, message: "Access denied. Users only." });
+  }
+  next();
+};
+
+module.exports = { authenticate, requireAdmin, requireUser };

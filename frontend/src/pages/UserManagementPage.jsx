@@ -1,11 +1,12 @@
 import { useState, useEffect, useCallback } from 'react'
-import { getUsers, createUser, updateUser, deleteUser } from '../services/api'
+import { getUsers, createUser, updateUser, deleteUser, getAdminStats } from '../services/api'
 import './UserManagementPage.css'
 
 const EMPTY_FORM = { name: '', email: '', password: '', role: 'user' }
 
 function UserManagementPage() {
   const [users, setUsers]       = useState([])
+  const [stats, setStats]       = useState(null)
   const [loading, setLoading]   = useState(true)
   const [error, setError]       = useState('')
   const [success, setSuccess]   = useState('')
@@ -31,7 +32,22 @@ function UserManagementPage() {
     }
   }, [])
 
-  useEffect(() => { fetchUsers() }, [fetchUsers])
+  // ── Fetch admin stats ──────────────────────────────────────────────────────
+  const fetchStats = async () => {
+    try {
+      const res = await getAdminStats()
+      if (res.success) {
+        setStats(res.data)
+      }
+    } catch (err) {
+      console.error('Failed to load platform stats', err)
+    }
+  }
+
+  useEffect(() => {
+    fetchUsers()
+    fetchStats()
+  }, [fetchUsers])
 
   const showSuccess = (msg) => {
     setSuccess(msg)
@@ -75,6 +91,7 @@ function UserManagementPage() {
       closeModal()
       showSuccess(`User "${form.name}" created successfully.`)
       fetchUsers()
+      fetchStats()
     } catch (err) {
       setFormErr(err.response?.data?.message || 'Failed to create user.')
     } finally {
@@ -93,6 +110,7 @@ function UserManagementPage() {
       closeModal()
       showSuccess(`User "${form.name}" updated successfully.`)
       fetchUsers()
+      fetchStats()
     } catch (err) {
       setFormErr(err.response?.data?.message || 'Failed to update user.')
     } finally {
@@ -105,6 +123,7 @@ function UserManagementPage() {
       await updateUser(user.id, { is_active: !user.is_active })
       showSuccess(`User "${user.name}" ${user.is_active ? 'deactivated' : 'activated'}.`)
       fetchUsers()
+      fetchStats()
     } catch (err) {
       setError(err.response?.data?.message || 'Failed to update status.')
     }
@@ -117,6 +136,7 @@ function UserManagementPage() {
       closeModal()
       showSuccess(`User "${selected.name}" deleted.`)
       fetchUsers()
+      fetchStats()
     } catch (err) {
       setFormErr(err.response?.data?.message || 'Failed to delete user.')
     } finally {
@@ -140,7 +160,7 @@ function UserManagementPage() {
           </div>
           <div>
             <h1 className="ump-title">User Management</h1>
-            <p className="ump-subtitle">Manage admin and user accounts for the platform</p>
+            <p className="ump-subtitle">Manage accounts and monitor service marketplace activity</p>
           </div>
         </div>
         <button className="ump-add-btn" onClick={openCreate} id="add-user-btn">
@@ -150,6 +170,64 @@ function UserManagementPage() {
           Add User
         </button>
       </div>
+
+      {/* Stats Section */}
+      {stats && (
+        <div className="admin-stats-grid">
+          <div className="stat-card">
+            <span className="stat-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color: 'var(--blue)'}}>
+                <path d="M17 21v-2a4 4 0 0 0-3-3H5a4 4 0 0 0-3 3v2" />
+                <circle cx="9" cy="7" r="4" />
+                <path d="M23 21v-2a4 4 0 0 0-3-3.87" />
+                <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+              </svg>
+            </span>
+            <div className="stat-info">
+              <span className="stat-number">{stats.total_users}</span>
+              <span className="stat-label">Total Users</span>
+            </div>
+          </div>
+          <div className="stat-card">
+            <span className="stat-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color: 'var(--purple)'}}>
+                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                <polyline points="14 2 14 8 20 8" />
+                <line x1="16" y1="13" x2="8" y2="13" />
+                <line x1="16" y1="17" x2="8" y2="17" />
+                <polyline points="10 9 9 9 8 9" />
+              </svg>
+            </span>
+            <div className="stat-info">
+              <span className="stat-number">{stats.total_auctions}</span>
+              <span className="stat-label">Total Requests</span>
+            </div>
+          </div>
+          <div className="stat-card">
+            <span className="stat-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color: 'var(--amber)'}}>
+                <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" />
+              </svg>
+            </span>
+            <div className="stat-info">
+              <span className="stat-number">{stats.active_auctions}</span>
+              <span className="stat-label">Active Requests</span>
+            </div>
+          </div>
+          <div className="stat-card">
+            <span className="stat-icon">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{color: 'var(--green)'}}>
+                <line x1="12" y1="1" x2="12" y2="23" />
+                <path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6" />
+              </svg>
+            </span>
+            <div className="stat-info">
+              <span className="stat-number">{stats.total_bids}</span>
+              <span className="stat-label">Total Bids</span>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Toast messages */}
       {error   && <div className="ump-toast ump-toast-error"  role="alert">{error}</div>}
@@ -172,6 +250,7 @@ function UserManagementPage() {
                   <th>#</th>
                   <th>Name</th>
                   <th>Email</th>
+                  <th>Auth Type</th>
                   <th>Role</th>
                   <th>Status</th>
                   <th>Created</th>
@@ -184,13 +263,22 @@ function UserManagementPage() {
                     <td className="ump-td-num">{idx + 1}</td>
                     <td>
                       <div className="ump-user-cell">
-                        <div className={`ump-avatar ump-avatar-${u.role}`}>
-                          {u.name.charAt(0).toUpperCase()}
-                        </div>
+                        {u.avatar_url ? (
+                          <img src={u.avatar_url} alt="" className="user-table-avatar" />
+                        ) : (
+                          <div className={`ump-avatar ump-avatar-${u.role}`}>
+                            {u.name.charAt(0).toUpperCase()}
+                          </div>
+                        )}
                         <span>{u.name}</span>
                       </div>
                     </td>
                     <td className="ump-email">{u.email}</td>
+                    <td>
+                      <span className={`auth-badge ${u.auth_provider}`}>
+                        {u.auth_provider === 'google' ? 'Google' : 'Local'}
+                      </span>
+                    </td>
                     <td>
                       <span className={`ump-role-badge ump-role-${u.role}`}>
                         {u.role === 'admin' ? (
@@ -297,8 +385,8 @@ function UserManagementPage() {
                     value={form.role}
                     onChange={(e) => setForm(f => ({ ...f, role: e.target.value }))}
                   >
-                    <option value="user">User — Monitor & place bids</option>
-                    <option value="admin">Admin — Create & manage auctions</option>
+                    <option value="user">User — Post & bid on services</option>
+                    <option value="admin">Admin — Monitor platform & users</option>
                   </select>
                 </div>
               </div>

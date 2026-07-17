@@ -1,10 +1,12 @@
 const express = require("express");
 const router = express.Router();
-const { login, getMe, getAllUsers, createUser, updateUser, deleteUser } = require("../controllers/authController");
+const { login, register, googleLogin, getMe, getAllUsers, createUser, updateUser, deleteUser } = require("../controllers/authController");
 const { authenticate, requireAdmin } = require("../middleware/authMiddleware");
 
 // Public
 router.post("/auth/login", login);
+router.post("/auth/register", register);       // NEW: user self-registration
+router.post("/auth/google", googleLogin);       // NEW: Google OAuth login
 
 // Authenticated user
 router.get("/auth/me", authenticate, getMe);

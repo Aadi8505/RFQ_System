@@ -1,14 +1,29 @@
 import { useState, useEffect, useCallback } from 'react'
-import { useParams, Link } from 'react-router-dom'
-import { getRFQById, placeBid } from '../services/api'
+import { useParams, Link, useNavigate } from 'react-router-dom'
+import { getRFQById, placeBid, deleteRFQ } from '../services/api'
 import { useAuth } from '../context/AuthContext'
 import StatusBadge from '../components/StatusBadge'
+import ChatSection from '../components/ChatSection'
+import CategoryIcon from '../components/CategoryIcon'
+import { io } from 'socket.io-client'
 import './AuctionDetailPage.css'
 
 function AuctionDetailPage() {
   const { id } = useParams()
-  const { isAdmin } = useAuth()
+  const navigate = useNavigate()
+  const { user, isAdmin, isUser } = useAuth()
   const [data, setData] = useState(null)
+
+  const handleDeleteRFQ = async () => {
+    if (window.confirm("Are you sure you want to permanently delete this service request?")) {
+      try {
+        await deleteRFQ(id)
+        navigate('/')
+      } catch (err) {
+        alert(err.response?.data?.message || "Failed to delete request.")
+      }
+    }
+  }
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [bidLoading, setBidLoading] = useState(false)
@@ -19,12 +34,12 @@ function AuctionDetailPage() {
 
   const [bidForm, setBidForm] = useState({
     bid_amount: '',
-    carrier_name: '',
     freight_charges: '',
     origin_charges: '',
     destination_charges: '',
     transit_time: '',
     validity: '',
+    tnc_extra_charges: '',
   })
 
   const fetchData = useCallback(async () => {
@@ -33,7 +48,7 @@ function AuctionDetailPage() {
       setData(res.data)
       setError(null)
     } catch {
-      setError('Failed to load auction details.')
+      setError('Failed to load request details.')
     } finally {
       setLoading(false)
     }
@@ -41,12 +56,42 @@ function AuctionDetailPage() {
 
   useEffect(() => {
     fetchData()
-    const interval = setInterval(fetchData, 5000)
-    return () => clearInterval(interval)
-  }, [fetchData])
+
+    const socketUrl = import.meta.env.VITE_API_URL || 'http://localhost:5000'
+    const socket = io(socketUrl, {
+      withCredentials: true
+    })
+
+    socket.emit('join-room', `rfq-${id}`)
+
+    socket.on('bid-updated', (updatedData) => {
+      console.log('Real-time bid update:', updatedData)
+      setData(prev => {
+        if (!prev) return prev
+        return {
+          ...prev,
+          rfq: {
+            ...prev.rfq,
+            bid_close_time: updatedData.rfq.bid_close_time,
+            forced_close_time: updatedData.rfq.forced_close_time,
+          },
+          rankings: updatedData.rankings
+        }
+      })
+    })
+
+    return () => {
+      socket.emit('leave-room', `rfq-${id}`)
+      socket.disconnect()
+    }
+  }, [fetchData, id])
 
   const handleBidChange = (e) => {
-    setBidForm(prev => ({ ...prev, [e.target.name]: e.target.value }))
+    setFormVal(e.target.name, e.target.value)
+  }
+
+  const setFormVal = (name, val) => {
+    setBidForm(prev => ({ ...prev, [name]: val }))
   }
 
   const handlePlaceBid = async (e) => {
@@ -55,22 +100,22 @@ function AuctionDetailPage() {
     setBidResult(null)
     const amount = parseFloat(bidForm.bid_amount)
     if (isNaN(amount) || amount <= 0) { setBidError('Enter a valid bid amount'); return }
-    if (!bidForm.carrier_name.trim()) { setBidError('Carrier name is required'); return }
 
     try {
       setBidLoading(true)
       const res = await placeBid({
         rfq_id: parseInt(id),
         bid_amount: amount,
-        carrier_name: bidForm.carrier_name,
+        carrier_name: user?.name || 'Anonymous Provider',
         freight_charges: parseFloat(bidForm.freight_charges) || 0,
         origin_charges: parseFloat(bidForm.origin_charges) || 0,
         destination_charges: parseFloat(bidForm.destination_charges) || 0,
         transit_time: bidForm.transit_time,
         validity: bidForm.validity,
+        tnc_extra_charges: bidForm.tnc_extra_charges,
       })
       setBidResult(res)
-      setBidForm({ bid_amount: '', carrier_name: '', freight_charges: '', origin_charges: '', destination_charges: '', transit_time: '', validity: '' })
+      setBidForm({ bid_amount: '', freight_charges: '', origin_charges: '', destination_charges: '', transit_time: '', validity: '', tnc_extra_charges: '' })
       fetchData()
     } catch (err) {
       setBidError(err.response?.data?.message || 'Failed to place bid')
@@ -82,28 +127,69 @@ function AuctionDetailPage() {
   const fmt = (d) => d ? new Date(d).toLocaleString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true }) : '—'
   const fmtC = (a) => (a != null) ? new Intl.NumberFormat('en-IN', { style: 'currency', currency: 'INR', maximumFractionDigits: 0 }).format(a) : '—'
 
+  // Tick counter forces re-render every second so status auto-transitions
+  const [tick, setTick] = useState(0)
+  useEffect(() => {
+    const interval = setInterval(() => setTick(t => t + 1), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  // Computed fresh on every tick/render from live timestamps
+  const liveStatus = (() => {
+    if (!data?.rfq) return 'Upcoming'
+    const now = Date.now()
+    const forcedClose = new Date(data.rfq.forced_close_time).getTime()
+    const bidClose = new Date(data.rfq.bid_close_time).getTime()
+    const bidStart = new Date(data.rfq.bid_start_time).getTime()
+    if (now >= forcedClose) return 'Force Closed'
+    if (now >= bidClose) return 'Closed'
+    if (now >= bidStart) return 'Active'
+    return 'Upcoming'
+  })()
+
   if (loading) return <div className="container animate-fade"><div className="skeleton" style={{ height: 400 }} /></div>
   if (error || !data) return <div className="container animate-fade"><div className="error-page"><h2>Error</h2><p>{error || 'Not found'}</p><Link to="/">← Back</Link></div></div>
 
   const { rfq, auction_config, rankings, activity_log } = data
-  const isActive = rfq.status === 'Active'
+
+  const isActive = liveStatus === 'Active'
+  const isOwnAuction = user?.id === rfq.created_by || user?.id === rfq.posted_by_id
 
   return (
     <div className="container animate-fade">
       <div className="breadcrumb">
-        <Link to="/">Auctions</Link>
+        <Link to="/">Requests</Link>
         <span className="bc-sep">›</span>
         <span>RFQ-{String(rfq.id).padStart(4, '0')}</span>
       </div>
 
       <div className="detail-header">
-        <div>
+        <div className="detail-header-main">
           <div className="detail-id-row">
             <span className="detail-rfq-id">RFQ-{String(rfq.id).padStart(4, '0')}</span>
-            <StatusBadge status={rfq.status} />
+            <StatusBadge status={liveStatus} />
+            {rfq.category_name && (
+              <span className="detail-category">
+                <CategoryIcon icon={rfq.category_icon} size={12} className="badge-icon" />
+                {rfq.category_name}
+              </span>
+            )}
           </div>
           <h1 className="detail-name">{rfq.name}</h1>
+          <div className="detail-poster-row">
+            <span>Posted by: <strong>{rfq.posted_by_name || 'System'}</strong></span>
+            {isOwnAuction && <span className="own-badge">Your Listing</span>}
+          </div>
         </div>
+        {isAdmin && (
+          <button onClick={handleDeleteRFQ} className="detail-delete-btn" title="Delete this request">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/>
+              <path d="M10 11v6"/><path d="M14 11v6"/><path d="M9 6V4a1 1 0 011-1h4a1 1 0 011 1v2"/>
+            </svg>
+            Delete Request
+          </button>
+        )}
       </div>
 
       <div className="stats-bar">
@@ -130,6 +216,13 @@ function AuctionDetailPage() {
 
       <div className="detail-grid">
         <div className="detail-main">
+          {rfq.description && (
+            <div className="detail-desc-box">
+              <h3>Description</h3>
+              <p>{rfq.description}</p>
+            </div>
+          )}
+
           <div className="detail-tabs">
             {['rankings', 'activity', 'config'].map(t => (
               <button key={t} className={`detail-tab ${activeTab === t ? 'active' : ''}`} onClick={() => setActiveTab(t)}>
@@ -147,7 +240,10 @@ function AuctionDetailPage() {
                       <div className="ranking-row" onClick={() => setExpandedBid(expandedBid === r.bid_id ? null : r.bid_id)}>
                         <span className={`rank-badge ${i < 3 ? `rank-l${i + 1}` : ''}`}>{r.rank}</span>
                         <div className="ranking-main">
-                          <span className="ranking-carrier">{r.carrier_name || 'Unknown Carrier'}</span>
+                          <span className="ranking-carrier">
+                            {r.carrier_name || 'Unknown Carrier'}
+                            <span className="ranking-bidder-name">({r.bidder_name || 'Anonymous'})</span>
+                          </span>
                           <span className="ranking-time">{fmt(r.placed_at)}</span>
                         </div>
                         <span className="ranking-amount">{fmtC(r.bid_amount)}</span>
@@ -177,6 +273,12 @@ function AuctionDetailPage() {
                             <span className="detail-label">Quote Validity</span>
                             <span className="detail-val">{r.validity || '—'}</span>
                           </div>
+                          {r.tnc_extra_charges && (
+                            <div className="detail-row-full" style={{ gridColumn: 'span 2', marginTop: '6px', borderTop: '1px solid var(--border-subtle)', paddingTop: '8px' }}>
+                              <span className="detail-label" style={{ display: 'block', marginBottom: '4px', fontWeight: 600 }}>T&C & Extra Charges</span>
+                              <p className="detail-text-val" style={{ margin: 0, fontSize: '13px', color: 'var(--text-secondary)', whiteSpace: 'pre-wrap' }}>{r.tnc_extra_charges}</p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </div>
@@ -239,18 +341,24 @@ function AuctionDetailPage() {
                   <p className="admin-notice-desc">You can monitor all bids and rankings in real-time. Only users can submit quotes.</p>
                 </div>
               </div>
+            ) : isOwnAuction ? (
+              <div className="bid-admin-notice select-warning">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                  <rect x="3" y="11" width="18" height="11" rx="2" ry="2"/>
+                  <path d="M7 11V7a5 5 0 0110 0v4"/>
+                </svg>
+                <div>
+                  <p className="admin-notice-title">Bidding Blocked</p>
+                  <p className="admin-notice-desc">This is your service request. You cannot place bids on your own listings.</p>
+                </div>
+              </div>
             ) : !isActive ? (
-              <div className="bid-closed">Auction is {rfq.status?.toLowerCase()}</div>
+              <div className="bid-closed">Bidding is {rfq.status?.toLowerCase()}</div>
             ) : (
               <form onSubmit={handlePlaceBid} className="bid-form">
                 <div className="bid-field">
-                  <label>Carrier Name *</label>
-                  <input type="text" name="carrier_name" value={bidForm.carrier_name} onChange={handleBidChange} placeholder="e.g., BlueDart Logistics" required />
-                </div>
-                <div className="bid-field">
                   <label>Bid Amount (Total) *</label>
                   <div className="bid-input-group">
-                    {/* <span className="bid-currency">₹</span> */}
                     <input type="number" name="bid_amount" value={bidForm.bid_amount} onChange={handleBidChange} placeholder="Total amount" min="1" step="any" required className="bid-input" id="bid-amount-input" />
                   </div>
                 </div>
@@ -278,6 +386,10 @@ function AuctionDetailPage() {
                   <label>Quote Validity</label>
                   <input type="text" name="validity" value={bidForm.validity} onChange={handleBidChange} placeholder="e.g., 7 days" />
                 </div>
+                <div className="bid-field">
+                  <label>T&C & Extra Charges (Optional)</label>
+                  <textarea name="tnc_extra_charges" value={bidForm.tnc_extra_charges} onChange={handleBidChange} placeholder="Describe any terms, conditions, or potential extra charges..." rows="3" style={{ background: 'var(--bg-input)', border: '1px solid var(--border-primary)', color: 'var(--text-primary)', padding: '9px 12px', fontSize: '13px', borderRadius: 'var(--radius-sm)', resize: 'vertical', fontFamily: 'inherit' }} />
+                </div>
 
                 {rankings.length > 0 && <p className="bid-hint">Current L1: {fmtC(rankings[0].bid_amount)} ({rankings[0].carrier_name || 'Unknown'})</p>}
 
@@ -297,6 +409,16 @@ function AuctionDetailPage() {
           </div>
         </div>
       </div>
+
+      {/* Post-Auction Chat Section — visible only to poster and winner (L1) after closed */}
+      <ChatSection
+        rfqId={parseInt(id)}
+        auctionStatus={liveStatus}
+        posterId={rfq.created_by}
+        rankings={rankings}
+        bidCloseTime={rfq.bid_close_time}
+        forcedCloseTime={rfq.forced_close_time}
+      />
     </div>
   )
 }

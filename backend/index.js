@@ -6,7 +6,12 @@ const rfqRoutes = require("./routes/rfqRoutes");
 const { testConnection } = require("./config/db");
 const bidRoutes = require("./routes/bidRoutes");
 const authRoutes = require("./routes/authRoutes");
+const categoryRoutes = require("./routes/categoryRoutes");
+const adminRoutes = require("./routes/adminRoutes");
+const messageRoutes = require("./routes/messageRoutes");
+
 const app = express();
+
 // Read allowed origins from env (comma-separated)
 const allowedOrigins = process.env.ALLOWED_ORIGINS
   ? process.env.ALLOWED_ORIGINS.split(",").map((o) => o.trim())
@@ -32,13 +37,15 @@ const PORT = process.env.PORT || 5000;
 app.get("/health", (req, res) => {
   res.send("Server running");
 });
-// Middleware
 
 // Routes
 app.use("/api", authRoutes);
 app.use("/api", bidRoutes);
 app.use("/api", healthRoutes);
 app.use("/api", rfqRoutes);
+app.use("/api", categoryRoutes);
+app.use("/api", adminRoutes);
+app.use("/api", messageRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
@@ -50,9 +57,26 @@ app.use((err, req, res, next) => {
   });
 });
 
+const http = require("http");
+const socketManager = require("./config/socket");
+
+const server = http.createServer(app);
+socketManager.init(server, allowedOrigins);
+
 testConnection();
+
+// Keep Neon database warm — ping every 4 minutes to prevent cold starts
+const { pool } = require("./config/db");
+setInterval(async () => {
+  try {
+    await pool.query("SELECT 1");
+  } catch (e) {
+    // Silent — don't crash server on keep-alive failure
+  }
+}, 4 * 60 * 1000);
+
 // Start server
-app.listen(PORT, async () => {
+server.listen(PORT, async () => {
   console.log(`Server running on port ${PORT}`);
 });
 

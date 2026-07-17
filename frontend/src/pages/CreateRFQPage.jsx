@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { createRFQ } from '../services/api'
+import { createRFQ, getCategories } from '../services/api'
 import './CreateRFQPage.css'
 
 function CreateRFQPage() {
@@ -8,9 +8,12 @@ function CreateRFQPage() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
   const [timeFormat, setTimeFormat] = useState('relative') // 'relative' or 'absolute'
+  const [categories, setCategories] = useState([])
 
   const [form, setForm] = useState({
     name: '',
+    description: '',
+    category_id: '',
     start_minutes_from_now: 0,
     close_minutes_from_now: 10,
     forced_close_minutes_from_now: 30,
@@ -23,11 +26,27 @@ function CreateRFQPage() {
     trigger_type: 'ANY_BID',
   })
 
+  useEffect(() => {
+    const fetchCategories = async () => {
+      try {
+        const res = await getCategories()
+        if (res.success) {
+          setCategories(res.data || [])
+        }
+      } catch (err) {
+        console.error('Failed to load categories', err)
+      }
+    }
+    fetchCategories()
+  }, [])
+
   const handleChange = (e) => {
     const { name, value } = e.target
     setForm(prev => ({
       ...prev,
-      [name]: ['name', 'service_date', 'trigger_type', 'bid_start_time', 'bid_close_time', 'forced_close_time'].includes(name) ? value : Number(value),
+      [name]: ['name', 'description', 'category_id', 'service_date', 'trigger_type', 'bid_start_time', 'bid_close_time', 'forced_close_time'].includes(name) 
+        ? value 
+        : Number(value),
     }))
   }
 
@@ -37,11 +56,15 @@ function CreateRFQPage() {
 
     // Validation
     if (!form.name.trim()) {
-      setError('RFQ Name is required')
+      setError('Service Request Name is required')
       return
     }
     if (!form.service_date) {
       setError('Service Date is required')
+      return
+    }
+    if (!form.category_id) {
+      setError('Please select a Category')
       return
     }
     if (timeFormat === 'relative') {
@@ -72,6 +95,8 @@ function CreateRFQPage() {
       setLoading(true)
       const payload = {
         name: form.name,
+        description: form.description,
+        category_id: parseInt(form.category_id),
         service_date: `${form.service_date}T12:00:00`,
         trigger_window: form.trigger_window,
         extension_duration: form.extension_duration,
@@ -92,7 +117,7 @@ function CreateRFQPage() {
         navigate(`/rfq/${res.data.id}`)
       }
     } catch (err) {
-      setError(err.response?.data?.message || 'Failed to create RFQ')
+      setError(err.response?.data?.message || 'Failed to create request')
     } finally {
       setLoading(false)
     }
@@ -108,8 +133,8 @@ function CreateRFQPage() {
     <div className="container animate-fade">
       <div className="create-page">
         <div className="create-header">
-          <h1>Create New RFQ</h1>
-          <p className="create-subtitle">Set up a British Auction with configurable extension rules</p>
+          <h1>Post New Service Request</h1>
+          <p className="create-subtitle">Describe your needs and launch a bidding auction for providers</p>
         </div>
 
         <form onSubmit={handleSubmit} className="create-form" id="create-rfq-form">
@@ -135,20 +160,50 @@ function CreateRFQPage() {
             </h2>
 
             <div className="form-group">
-              <label htmlFor="name">RFQ Name / Reference ID</label>
+              <label htmlFor="name">Service Request Name / Title</label>
               <input
                 type="text"
                 id="name"
                 name="name"
                 value={form.name}
                 onChange={handleChange}
-                placeholder="e.g., Freight Auction - Mumbai to Delhi"
+                placeholder="e.g., Need kitchen plumbing repair"
                 required
               />
             </div>
 
             <div className="form-group">
-              <label htmlFor="service_date">Pickup / Service Date</label>
+              <label htmlFor="category_id">Category</label>
+              <select
+                id="category_id"
+                name="category_id"
+                value={form.category_id}
+                onChange={handleChange}
+                required
+              >
+                <option value="">Select Category</option>
+                {categories.map((cat) => (
+                  <option key={cat.id} value={cat.id}>
+                    {cat.icon} {cat.name}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="description">Detailed Description</label>
+              <textarea
+                id="description"
+                name="description"
+                value={form.description}
+                onChange={handleChange}
+                placeholder="Describe the service you require in detail..."
+                rows="4"
+              />
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="service_date">Preferred Date for Service</label>
               <input
                 type="date"
                 id="service_date"
@@ -227,7 +282,7 @@ function CreateRFQPage() {
                       step="1"
                       required
                     />
-                    <span className="form-hint">When auction normally ends</span>
+                    <span className="form-hint">When bidding normally closes</span>
                   </div>
                   <div className="form-group">
                     <label htmlFor="forced_close_minutes_from_now">Forced Close (min from now)</label>
@@ -268,7 +323,7 @@ function CreateRFQPage() {
                       onChange={handleChange}
                       required
                     />
-                    <span className="form-hint">When auction normally ends</span>
+                    <span className="form-hint">When bidding normally closes</span>
                   </div>
                   <div className="form-group">
                     <label htmlFor="forced_close_time">Forced Close Time</label>
@@ -294,7 +349,7 @@ function CreateRFQPage() {
                 <circle cx="12" cy="12" r="3"/>
                 <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
               </svg>
-              British Auction Configuration
+              Bidding Extension Config
             </h2>
 
             <div className="form-row form-row-2">
@@ -405,14 +460,14 @@ function CreateRFQPage() {
             {loading ? (
               <>
                 <span className="spinner" />
-                Creating...
+                Posting...
               </>
             ) : (
               <>
                 <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                   <polyline points="20 6 9 17 4 12"/>
                 </svg>
-                Create Auction
+                Post Service Request
               </>
             )}
           </button>

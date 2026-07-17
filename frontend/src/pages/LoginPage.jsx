@@ -1,14 +1,17 @@
 import { useState } from 'react'
+import { useNavigate, Link } from 'react-router-dom'
+import { GoogleLogin } from '@react-oauth/google'
 import { useAuth } from '../context/AuthContext'
 import './LoginPage.css'
 
 function LoginPage() {
-  const { login } = useAuth()
+  const { login, googleLogin } = useAuth()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [error, setError] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
+  const navigate = useNavigate()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -16,10 +19,28 @@ function LoginPage() {
     setLoading(true)
 
     const result = await login(email, password)
-    if (!result.success) {
+    if (result.success) {
+      navigate('/')
+    } else {
       setError(result.message)
       setLoading(false)
     }
+  }
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setError('')
+    setLoading(true)
+    const result = await googleLogin(credentialResponse.credential)
+    if (result.success) {
+      navigate('/')
+    } else {
+      setError(result.message)
+      setLoading(false)
+    }
+  }
+
+  const handleGoogleError = () => {
+    setError('Google Sign-In failed. Please try again.')
   }
 
   return (
@@ -40,8 +61,8 @@ function LoginPage() {
                 <path d="M2 12l10 5 10-5" />
               </svg>
             </div>
-            <h1 className="login-title">RFQ Auction</h1>
-            <p className="login-subtitle">Sign in to access the auction platform</p>
+            <h1 className="login-title">LazyList</h1>
+            <p className="login-subtitle">Sign in to access service requests & bidding</p>
           </div>
 
           {/* Error Message */}
@@ -126,19 +147,53 @@ function LoginPage() {
             </button>
           </form>
 
+          {/* Divider */}
+          <div className="login-divider">
+            <span>or sign in with</span>
+          </div>
+
+          {/* Google Sign-In wrapper */}
+          <div className="google-login-wrapper">
+            <GoogleLogin
+              onSuccess={handleGoogleSuccess}
+              onError={handleGoogleError}
+              theme="filled_blue"
+              size="large"
+              shape="rectangular"
+              text="signin_with"
+            />
+          </div>
+
+          {/* Register Link */}
+          <div className="login-register-link">
+            <p>Don't have an account? <Link to="/register">Register here</Link></p>
+          </div>
+
           <div className="login-hints">
-            <h2 className="login-hints-title">Demo Credentials</h2>
-            <div 
-              className="login-hint-card"
-              onClick={() => {
-                setEmail('ekart@rfq.com');
-                setPassword('user123');
-              }}
-              style={{ width: '100%' }}
-            >
-              <span className="hint-role user-role">Ekart User</span>
-              <span className="hint-email">ekart@rfq.com</span>
-              <span className="hint-desc">Password: user123 (Click to autofill)</span>
+            <h2 className="login-hints-title">Default Credentials</h2>
+            <div className="login-hint-cards">
+              <div 
+                className="login-hint-card"
+                onClick={() => {
+                  setEmail('admin@rfq.com');
+                  setPassword('admin123');
+                }}
+              >
+                <span className="hint-role admin-role">Admin</span>
+                <span className="hint-email">admin@rfq.com</span>
+                <span className="hint-desc">PW: admin123 (Seeded)</span>
+              </div>
+              <div 
+                className="login-hint-card"
+                onClick={() => {
+                  setEmail('ekart@rfq.com');
+                  setPassword('user123');
+                }}
+              >
+                <span className="hint-role user-role">User</span>
+                <span className="hint-email">ekart@rfq.com</span>
+                <span className="hint-desc">Create via Register page</span>
+              </div>
             </div>
           </div>
         </div>

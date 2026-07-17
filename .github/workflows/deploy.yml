@@ -1,16 +1,16 @@
-name: Deploy RFQ Backend to AWS EC2
+name: Deploy LazyList to AWS EC2
 
 on:
   push:
     branches: [main]
-    paths:
-      - 'backend/**'
 
 jobs:
-  deploy:
+  deploy-backend:
+    name: Deploy Backend
     runs-on: ubuntu-latest
+    if: contains(join(github.event.commits.*.modified, ','), 'backend/') || contains(join(github.event.commits.*.added, ','), 'backend/')
     steps:
-      - name: Deploy to EC2 via SSH
+      - name: Deploy Backend to EC2 via SSH
         uses: appleboy/ssh-action@v1
         with:
           host: ${{ secrets.EC2_HOST }}
@@ -21,3 +21,50 @@ jobs:
             git pull origin main
             cd ~/app
             docker compose up -d --build rfq-backend
+            echo "✅ Backend deployed successfully"
+
+  deploy-frontend:
+    name: Build & Deploy Frontend
+    runs-on: ubuntu-latest
+    if: contains(join(github.event.commits.*.modified, ','), 'frontend/') || contains(join(github.event.commits.*.added, ','), 'frontend/')
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install Dependencies
+        working-directory: frontend
+        run: npm ci
+
+      - name: Build Frontend
+        working-directory: frontend
+        env:
+          VITE_API_URL: ${{ secrets.VITE_API_URL }}
+          VITE_GOOGLE_CLIENT_ID: ${{ secrets.VITE_GOOGLE_CLIENT_ID }}
+        run: npm run build
+
+      - name: Deploy dist to EC2
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          source: frontend/dist/*
+          target: ~/app/RFQ_System/frontend/
+          strip_components: 2
+
+      - name: Restart Nginx on EC2
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.EC2_HOST }}
+          username: ubuntu
+          key: ${{ secrets.EC2_SSH_KEY }}
+          script: |
+            sudo systemctl reload nginx || echo "Nginx not configured yet"
+            echo "✅ Frontend deployed successfully"

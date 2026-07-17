@@ -17,16 +17,20 @@ export function AuthProvider({ children }) {
 
   const [token, setToken] = useState(() => localStorage.getItem('rfq_token') || null)
 
-  // ── Login ──────────────────────────────────────────────────────────────────
+  // Helper to save auth state
+  const saveAuth = (tokenVal, userVal) => {
+    localStorage.setItem('rfq_token', tokenVal)
+    localStorage.setItem('rfq_user', JSON.stringify(userVal))
+    setToken(tokenVal)
+    setUser(userVal)
+  }
+
+  // ── Login (email + password) ────────────────────────────────────────────────
   const login = useCallback(async (email, password) => {
     try {
       const { data } = await axios.post(`${API_BASE_URL}/api/auth/login`, { email, password })
       if (!data.success) return { success: false, message: data.message || 'Login failed.' }
-
-      localStorage.setItem('rfq_token', data.token)
-      localStorage.setItem('rfq_user', JSON.stringify(data.user))
-      setToken(data.token)
-      setUser(data.user)
+      saveAuth(data.token, data.user)
       return { success: true }
     } catch (err) {
       const message = err.response?.data?.message || 'Invalid email or password.'
@@ -34,7 +38,33 @@ export function AuthProvider({ children }) {
     }
   }, [])
 
-  // ── Logout ─────────────────────────────────────────────────────────────────
+  // ── Register (email + password — users only) ───────────────────────────────
+  const register = useCallback(async (name, email, password) => {
+    try {
+      const { data } = await axios.post(`${API_BASE_URL}/api/auth/register`, { name, email, password })
+      if (!data.success) return { success: false, message: data.message || 'Registration failed.' }
+      saveAuth(data.token, data.user)
+      return { success: true }
+    } catch (err) {
+      const message = err.response?.data?.message || 'Registration failed.'
+      return { success: false, message }
+    }
+  }, [])
+
+  // ── Google Login ────────────────────────────────────────────────────────────
+  const googleLogin = useCallback(async (credential) => {
+    try {
+      const { data } = await axios.post(`${API_BASE_URL}/api/auth/google`, { credential })
+      if (!data.success) return { success: false, message: data.message || 'Google login failed.' }
+      saveAuth(data.token, data.user)
+      return { success: true }
+    } catch (err) {
+      const message = err.response?.data?.message || 'Google login failed.'
+      return { success: false, message }
+    }
+  }, [])
+
+  // ── Logout ──────────────────────────────────────────────────────────────────
   const logout = useCallback(() => {
     localStorage.removeItem('rfq_token')
     localStorage.removeItem('rfq_user')
@@ -43,10 +73,10 @@ export function AuthProvider({ children }) {
   }, [])
 
   const isAdmin = user?.role === 'admin'
-  const isUser  = user?.role === 'user'
+  const isUser = user?.role === 'user'
 
   return (
-    <AuthContext.Provider value={{ user, token, login, logout, isAdmin, isUser }}>
+    <AuthContext.Provider value={{ user, token, login, register, googleLogin, logout, isAdmin, isUser }}>
       {children}
     </AuthContext.Provider>
   )
