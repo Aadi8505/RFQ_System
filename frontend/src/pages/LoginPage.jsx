@@ -161,6 +161,7 @@ function LoginPage() {
               size="large"
               shape="rectangular"
               text="signin_with"
+              uxMode="redirect"
             />
           </div>
 
