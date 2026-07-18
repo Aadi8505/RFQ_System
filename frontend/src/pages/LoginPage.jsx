@@ -173,27 +173,27 @@ function LoginPage() {
           <div className="login-hints">
             <h2 className="login-hints-title">Default Credentials</h2>
             <div className="login-hint-cards">
-              <div 
+              {/* <div 
                 className="login-hint-card"
                 onClick={() => {
-                  setEmail('admin@rfq.com');
-                  setPassword('admin123');
+                  setEmail('demo@gmail.com');
+                  setPassword('demo123');
                 }}
               >
-                <span className="hint-role admin-role">Admin</span>
-                <span className="hint-email">admin@rfq.com</span>
-                <span className="hint-desc">PW: admin123 (Seeded)</span>
-              </div>
+                <span className="hint-role admin-role">Demo User</span>
+                <span className="hint-email">demo@gmail.com</span>
+                <span className="hint-desc">PW: demo123(Seeded)</span>
+              </div> */}
               <div 
                 className="login-hint-card"
                 onClick={() => {
-                  setEmail('ekart@rfq.com');
-                  setPassword('user123');
+                  setEmail('demo@gmail.com');
+                  setPassword('demo123');
                 }}
               >
                 <span className="hint-role user-role">User</span>
-                <span className="hint-email">ekart@rfq.com</span>
-                <span className="hint-desc">Create via Register page</span>
+                <span className="hint-email">demo@gmail.com</span>
+                <span className="hint-desc">Password: demo123</span>
               </div>
             </div>
           </div>

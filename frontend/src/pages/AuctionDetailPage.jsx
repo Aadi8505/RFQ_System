@@ -362,7 +362,7 @@ function AuctionDetailPage() {
                     <input type="number" name="bid_amount" value={bidForm.bid_amount} onChange={handleBidChange} placeholder="Total amount" min="1" step="any" required className="bid-input" id="bid-amount-input" />
                   </div>
                 </div>
-                <div className="bid-field-row">
+                {/* <div className="bid-field-row">
                   <div className="bid-field">
                     <label>Freight Charges</label>
                     <input type="number" name="freight_charges" value={bidForm.freight_charges} onChange={handleBidChange} placeholder="₹ 0" min="0" step="any" />
@@ -371,8 +371,8 @@ function AuctionDetailPage() {
                     <label>Origin Charges</label>
                     <input type="number" name="origin_charges" value={bidForm.origin_charges} onChange={handleBidChange} placeholder="₹ 0" min="0" step="any" />
                   </div>
-                </div>
-                <div className="bid-field-row">
+                </div> */}
+                {/* <div className="bid-field-row">
                   <div className="bid-field">
                     <label>Dest. Charges</label>
                     <input type="number" name="destination_charges" value={bidForm.destination_charges} onChange={handleBidChange} placeholder="₹ 0" min="0" step="any" />
@@ -381,7 +381,7 @@ function AuctionDetailPage() {
                     <label>Transit Time</label>
                     <input type="text" name="transit_time" value={bidForm.transit_time} onChange={handleBidChange} placeholder="e.g., 3 days" />
                   </div>
-                </div>
+                </div> */}
                 <div className="bid-field">
                   <label>Quote Validity</label>
                   <input type="text" name="validity" value={bidForm.validity} onChange={handleBidChange} placeholder="e.g., 7 days" />
