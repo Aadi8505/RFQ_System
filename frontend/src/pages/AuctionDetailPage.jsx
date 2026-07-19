@@ -249,11 +249,11 @@ function AuctionDetailPage() {
                         <span className="ranking-amount">{fmtC(r.bid_amount)}</span>
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className={`expand-icon ${expandedBid === r.bid_id ? 'expanded' : ''}`}>
                           <polyline points="6 9 12 15 18 9" />
-                        </svg>
+                        </svg>{/*  */}
                       </div>
                       {expandedBid === r.bid_id && (
                         <div className="ranking-details animate-fade">
-                          <div className="detail-row">
+                          {/* <div className="detail-row">
                             <span className="detail-label">Freight Charges</span>
                             <span className="detail-val">{fmtC(r.freight_charges)}</span>
                           </div>
@@ -268,7 +268,7 @@ function AuctionDetailPage() {
                           <div className="detail-row">
                             <span className="detail-label">Transit Time</span>
                             <span className="detail-val">{r.transit_time || '—'}</span>
-                          </div>
+                          </div> */}
                           <div className="detail-row">
                             <span className="detail-label">Quote Validity</span>
                             <span className="detail-val">{r.validity || '—'}</span>
